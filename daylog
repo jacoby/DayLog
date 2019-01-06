@@ -1,0 +1,140 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use utf8;
+use feature qw{ postderef say signatures state };
+no warnings qw{ experimental::postderef experimental::signatures };
+
+use Carp;
+use Getopt::Long;
+use Pod::Usage;
+use JSON;
+use DateTime;
+use Template;
+
+my $json   = JSON->new->pretty->canonical->utf8;
+display( filter(config()) );
+exit;
+
+# -------------------------------------------------------------
+sub filter ( $config ) {
+    for my $key (
+        qw{
+        day link progress repo thought
+        }
+        )
+    {
+        if ( !defined $config->{$key} ) {
+            say qq{You have no input for the key: "$key" };
+            say qq{Enter your input here:};
+            print "\t";
+            my $v = <>;
+            chomp $v;
+            $config->{$key} = $v;
+            say '' ;
+        }
+    }
+    return $config;
+}
+
+# -------------------------------------------------------------
+sub display ( $config ) {
+
+    my $md = <<'MD';
+
+### Day [% day %]: [% date %] ([% repo %])
+
+**Today's Progress**: [% progress %]
+
+**Thoughts:** [% thought %]
+
+**Link to work:** [[% repo %]]([% link %])
+
+MD
+    my $tt = Template->new( { POST_CHOMP => 0 } );
+    $tt->process( \$md, $config )
+        || die "Template process failed: ", $tt->error(), "\n";
+
+}
+
+# -------------------------------------------------------------
+sub config () {
+    my $config = {};
+    GetOptions(
+        'day=i'      => \$config->{day},
+        'progress=s' => \$config->{progress},
+        'thought=s'  => \$config->{thought},
+        'repo=s'     => \$config->{repo},
+        'link=s'     => \$config->{link},
+        'help'       => \$config->{help},
+    );
+    $config->{date} =
+        DateTime->now()->set_time_zone('floating')->strftime('%B %d, %Y');
+    pod2usage( { -verbose => 4, -exitval => 1 } ) if $config->{help};
+    map      { delete $config->{$_} }
+        grep { !defined $config->{$_} } keys $config->%*;
+    return $config;
+}
+
+=head1 NAME
+
+daylog - easy fill-in for #100DaysOfCode og
+
+=head1 SYNOPSIS
+
+    daylog
+    daylog  -d <day of challenge>
+            -t <thoughts> 
+            -l <link to repo> 
+            -p <progress>
+    daylog  -h
+
+=head1 DESCRIPTION
+
+Creates the log settings for your 100 Days of Code log. 
+Uses command-line flags, but creates interactive session 
+for missing fields.
+
+=head1 OPTIONS
+
+=over 4
+
+=item B<-d>, B<--day>
+
+The count of the day you're currently at
+
+=item B<-l>, B<--link>
+
+Link to the repo where your work is held
+
+=item B<-p>, B<--progress>
+
+String explaining what tasks got done during this hour
+
+=item B<-t>, B<--thoughts>
+
+Your thoughts on the code written.
+
+=item B<-l>, B<--link>
+
+Link to the repo where your work is held
+
+=item B<-h>, B<--help>
+
+Display help message
+
+=back
+
+=head1 LICENSE
+
+This is released under the Apache License.]
+
+=head1 AUTHOR
+
+Dave Jacoby L<jacoby.david@gmail.com>
+
+=cut
+
+__DATA__
+
